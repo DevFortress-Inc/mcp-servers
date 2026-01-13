@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Fast Food Map</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+            :root {
+                --primary: #ef4444;
+                --primary-hover: #dc2626;
+                --blue: #3b82f6;
+                --blue-hover: #2563eb;
+                --bg: #f6f8fb;
+                --card-bg: #fff;
+                --text: #0b0b0f;
+                --text-muted: #6b7280;
+                --border: #e5e7eb;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                min-height: 100%;
+                font-family:
+                    "Inter",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                background: var(--bg);
+                color: var(--text);
+            }
+
+            body {
+                padding: 16px;
+            }
+
+            .container {
+                max-width: 500px;
+                margin: 0 auto;
+            }
+
+            .header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .header h2 {
+                margin: 0;
+                font-size: 1.25rem;
+                font-weight: 600;
+            }
+
+            .header .subtitle {
+                font-size: 0.875rem;
+                color: var(--text-muted);
+                margin-left: auto;
+            }
+
+            #map {
+                width: 100%;
+                height: 280px;
+                border-radius: 16px;
+                overflow: hidden;
+                margin-bottom: 16px;
+                border: 1px solid var(--border);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            }
+
+            .restaurant-list {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .restaurant-card {
+                display: flex;
+                align-items: center;
+                padding: 14px;
+                background: var(--card-bg);
+                border-radius: 14px;
+                gap: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                border: 1px solid var(--border);
+                transition:
+                    transform 0.15s ease,
+                    box-shadow 0.15s ease;
+                cursor: pointer;
+            }
+
+            .restaurant-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            }
+
+            .restaurant-number {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--primary);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 14px;
+                flex-shrink: 0;
+            }
+
+            .restaurant-info {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .restaurant-name {
+                font-weight: 600;
+                font-size: 15px;
+                margin-bottom: 2px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .restaurant-address {
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .restaurant-meta {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+            }
+
+            .restaurant-type {
+                display: inline-block;
+                padding: 2px 8px;
+                background: #fef3c7;
+                color: #92400e;
+                border-radius: 12px;
+                text-transform: capitalize;
+            }
+
+            .restaurant-rating {
+                color: var(--text-muted);
+            }
+
+            .directions-btn {
+                padding: 10px 14px;
+                background: var(--blue);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                flex-shrink: 0;
+                transition: background 0.15s ease;
+            }
+
+            .directions-btn:hover {
+                background: var(--blue-hover);
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 40px 20px;
+                color: var(--text-muted);
+            }
+
+            .empty-state .emoji {
+                font-size: 48px;
+                margin-bottom: 12px;
+            }
+
+            /* Leaflet popup customization */
+            .leaflet-popup-content-wrapper {
+                border-radius: 12px;
+                padding: 0;
+            }
+
+            .leaflet-popup-content {
+                margin: 12px 14px;
+                font-family:
+                    "Inter",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+            }
+
+            .popup-name {
+                font-weight: 600;
+                font-size: 14px;
+                margin-bottom: 4px;
+            }
+
+            .popup-address {
+                font-size: 12px;
+                color: var(--text-muted);
+            }
+
+            /* Custom marker styles */
+            .custom-marker {
+                background: var(--primary);
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: 700;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <span style="font-size: 24px">🍔</span>
+                <h2>Fast Food Restaurants</h2>
+                <span class="subtitle" id="result-count"></span>
+            </div>
+            <div id="map"></div>
+            <div id="restaurant-list" class="restaurant-list"></div>
+        </div>
+
+        <script type="module">
+            // Initialize map once
+            const map = L.map("map");
+
+            // Add OpenStreetMap tiles
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution:
+                    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19,
+            }).addTo(map);
+
+            // Track markers to remove them when updating
+            let currentMarkers = [];
+
+            // Notify ChatGPT of widget height
+            const notifyHeight = () => {
+                const height = document.body.scrollHeight;
+                if (window.openai?.notifyIntrinsicHeight) {
+                    window.openai.notifyIntrinsicHeight({ height });
+                }
+            };
+
+            // Custom numbered marker icon
+            function createNumberedIcon(number) {
+                return L.divIcon({
+                    className: "",
+                    html: `<div class="custom-marker" style="width: 28px; height: 28px;">${number}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    popupAnchor: [0, -14],
+                });
+            }
+
+            // Main render function
+            function render(toolOutput) {
+                toolOutput = toolOutput || {};
+                const restaurants = toolOutput.restaurants || [];
+                const center = toolOutput.center || { lat: 37.78, lng: -122.41 };
+                const location = toolOutput.location || "San Francisco";
+                const searchType = toolOutput.searchType || "all";
+
+                // Update result count
+                const resultCountEl = document.getElementById("result-count");
+                if (restaurants.length > 0) {
+                    resultCountEl.textContent = `${restaurants.length} found`;
+                } else {
+                    resultCountEl.textContent = "";
+                }
+
+                // Clear existing markers
+                currentMarkers.forEach((marker) => map.removeLayer(marker));
+                currentMarkers = [];
+
+                // Add markers for each restaurant
+                restaurants.forEach((restaurant, index) => {
+                    const marker = L.marker([restaurant.lat, restaurant.lng], {
+                        icon: createNumberedIcon(index + 1),
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+            <div class="popup-name">${restaurant.name}</div>
+            <div class="popup-address">${restaurant.address}</div>
+          `);
+
+                    currentMarkers.push(marker);
+                });
+
+                // Fit bounds or set view
+                if (currentMarkers.length > 0) {
+                    const group = L.featureGroup(currentMarkers);
+                    map.fitBounds(group.getBounds().pad(0.1));
+                } else {
+                    map.setView([center.lat, center.lng], 14);
+                }
+
+                // Render restaurant list
+                const listEl = document.getElementById("restaurant-list");
+                listEl.innerHTML = ""; // Clear existing list
+
+                if (restaurants.length === 0) {
+                    listEl.innerHTML = `
+            <div class="empty-state">
+              <div class="emoji">🔍</div>
+              <div>No restaurants found</div>
+            </div>
+          `;
+                } else {
+                    restaurants.forEach((restaurant, index) => {
+                        const card = document.createElement("div");
+                        card.className = "restaurant-card";
+                        card.innerHTML = `
+              <div class="restaurant-number">${index + 1}</div>
+              <div class="restaurant-info">
+                <div class="restaurant-name">${restaurant.name}</div>
+                <div class="restaurant-address">${restaurant.address}</div>
+                <div class="restaurant-meta">
+                  <span class="restaurant-type">${restaurant.type}</span>
+                  <span class="restaurant-rating">⭐ ${restaurant.rating}</span>
+                </div>
+              </div>
+              <button class="directions-btn">📍 Go</button>
+            `;
+
+                        // Click on card to zoom to marker
+                        card.addEventListener("click", (e) => {
+                            if (!e.target.classList.contains("directions-btn")) {
+                                map.setView([restaurant.lat, restaurant.lng], 16);
+                                currentMarkers[index].openPopup();
+                            }
+                        });
+
+                        // Directions button
+                        const directionsBtn = card.querySelector(".directions-btn");
+                        directionsBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            const href = `https://www.google.com/maps/dir/?api=1&destination=${restaurant.lat},${restaurant.lng}`;
+                            if (window.openai?.openExternal) {
+                                window.openai.openExternal({ href });
+                            } else {
+                                window.open(href, "_blank");
+                            }
+                        });
+
+                        listEl.appendChild(card);
+                    });
+                }
+
+                // Update height after rendering
+                setTimeout(notifyHeight, 100);
+            }
+
+            // Initial render with current data
+            render(window.openai?.toolOutput);
+
+            // Listen for updates from ChatGPT
+            window.addEventListener(
+                "openai:set_globals",
+                (event) => {
+                    const globals = event.detail?.globals;
+                    if (globals?.toolOutput) {
+                        // Update DOM in place instead of reloading
+                        render(globals.toolOutput);
+                    }
+                },
+                { passive: true },
+            );
+
+            // Re-notify on resize
+            window.addEventListener("resize", notifyHeight, { passive: true });
+        </script>
+    </body>
+</html>

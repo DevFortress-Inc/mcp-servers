@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"fastfood-map": {
+			"type": "url",
+			"url": "http://localhost:3000/mcp"
+		}
+	}
+}

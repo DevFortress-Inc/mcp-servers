@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Restaurant Details</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      :root {
+        --primary: #ef4444;
+        --blue: #3b82f6;
+        --blue-hover: #2563eb;
+        --bg: #f6f8fb;
+        --card-bg: #fff;
+        --text: #0b0b0f;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        min-height: 100%;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        padding: 16px;
+      }
+
+      .container {
+        max-width: 420px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border);
+      }
+
+      #map {
+        width: 100%;
+        height: 200px;
+      }
+
+      .content {
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        object-fit: contain;
+        background: #f3f4f6;
+        padding: 8px;
+        flex-shrink: 0;
+      }
+
+      .header-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        line-height: 1.2;
+      }
+
+      .type-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #fef3c7;
+        color: #92400e;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: capitalize;
+      }
+
+      .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .info-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+
+      .info-icon {
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .info-label {
+        color: var(--text-muted);
+        min-width: 60px;
+      }
+
+      .info-value {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .rating-stars {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .star {
+        color: #fbbf24;
+      }
+
+      .star.empty {
+        color: #d1d5db;
+      }
+
+      .directions-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 14px 20px;
+        background: var(--blue);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        transition: background 0.15s ease, transform 0.1s ease;
+      }
+
+      .directions-btn:hover {
+        background: var(--blue-hover);
+      }
+
+      .directions-btn:active {
+        transform: scale(0.98);
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+      }
+
+      .empty-state .emoji {
+        font-size: 48px;
+        margin-bottom: 12px;
+      }
+
+      /* Leaflet customization */
+      .leaflet-popup-content-wrapper {
+        border-radius: 10px;
+      }
+
+      .custom-marker {
+        background: var(--primary);
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="map"></div>
+      <div class="content" id="content">
+        <!-- Content will be rendered by JavaScript -->
+      </div>
+    </div>
+
+    <script type="module">
+      // Get data from ChatGPT
+      const toolOutput = window.openai?.toolOutput || {};
+      const restaurant = toolOutput.restaurant || null;
+
+      const contentEl = document.getElementById("content");
+      const mapEl = document.getElementById("map");
+
+      if (!restaurant) {
+        mapEl.style.display = "none";
+        contentEl.innerHTML = `
+          <div class="empty-state">
+            <div class="emoji">🔍</div>
+            <div>Restaurant not found</div>
+          </div>
+        `;
+      } else {
+        // Initialize map
+        const map = L.map("map", {
+          zoomControl: false,
+          attributionControl: false,
+        }).setView([restaurant.lat, restaurant.lng], 16);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Add marker
+        const icon = L.divIcon({
+          className: "",
+          html: `<div class="custom-marker" style="width: 36px; height: 36px;">📍</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+
+        L.marker([restaurant.lat, restaurant.lng], { icon }).addTo(map);
+
+        // Generate star rating
+        const fullStars = Math.floor(restaurant.rating);
+        const hasHalfStar = restaurant.rating % 1 >= 0.5;
+        let starsHtml = "";
+        for (let i = 0; i < 5; i++) {
+          if (i < fullStars) {
+            starsHtml += '<span class="star">★</span>';
+          } else if (i === fullStars && hasHalfStar) {
+            starsHtml += '<span class="star">★</span>';
+          } else {
+            starsHtml += '<span class="star empty">★</span>';
+          }
+        }
+
+        // Render content
+        contentEl.innerHTML = `
+          <div class="header">
+            ${restaurant.image ? `<img class="logo" src="${restaurant.image}" alt="${restaurant.name} logo" onerror="this.style.display='none'" />` : ""}
+            <div class="header-info">
+              <h1 class="name">${restaurant.name}</h1>
+              <span class="type-badge">${restaurant.type}</span>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-icon">📍</span>
+              <span class="info-label">Address</span>
+              <span class="info-value">${restaurant.address}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">⭐</span>
+              <span class="info-label">Rating</span>
+              <span class="info-value">
+                <span class="rating-stars">${starsHtml}</span>
+                &nbsp;${restaurant.rating}/5
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-icon">🌐</span>
+              <span class="info-label">Coords</span>
+              <span class="info-value">${restaurant.lat.toFixed(4)}, ${restaurant.lng.toFixed(4)}</span>
+            </div>
+          </div>
+
+          <button class="directions-btn" id="directions-btn">
+            <span>🚗</span>
+            <span>Get Directions</span>
+          </button>
+        `;
+
+        // Directions button handler
+        document.getElementById("directions-btn").addEventListener("click", () => {
+          const href = `https://www.google.com/maps/dir/?api=1&destination=${restaurant.lat},${restaurant.lng}`;
+          if (window.openai?.openExternal) {
+            window.openai.openExternal({ href });
+          } else {
+            window.open(href, "_blank");
+          }
+        });
+      }
+
+      // Notify ChatGPT of widget height
+      const notifyHeight = () => {
+        const height = document.body.scrollHeight;
+        if (window.openai?.notifyIntrinsicHeight) {
+          window.openai.notifyIntrinsicHeight({ height });
+        }
+      };
+
+      setTimeout(notifyHeight, 100);
+      window.addEventListener("resize", notifyHeight, { passive: true });
+    </script>
+  </body>
+</html>
