@@ -296,6 +296,6 @@ PORT=8080 npm start
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
 - [Apps SDK Examples](https://github.com/openai/apps-sdk-examples)
 
-## License
+## Demo MCP endpoint
 
-MIT
+https://hackthon-vibe.vercel.app/mcp
