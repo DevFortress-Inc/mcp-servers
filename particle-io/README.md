@@ -2,6 +2,8 @@
 
 Soothing particle animations for ChatGPT Apps SDK.
 
+# Link for the mcp :-https://particel-io.vercel.app/
+
 ## Description
 
 A ChatGPT App that creates beautiful, calming particle animations. Simply describe a scene or pick a preset, and watch mesmerizing particles come to life in an interactive widget.
