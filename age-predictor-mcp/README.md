@@ -6,7 +6,7 @@ A minimal Next.js application demonstrating how to build an [OpenAI Apps SDK](ht
 
 This fun project integrates a Next.js application with the ChatGPT Apps SDK using the Model Context Protocol (MCP) to predict the age of a person using their name. To use it, prompt Athena AI chat agent or ChatGPT to predict the age of a person like this: `Predict the age of John`.
 
-The link for the mcp is: https://vibe-mcp.vercel.app/mcp. 
+MCP Link: https://vibe-mcp.vercel.app/mcp 
 
 ## Key Components
 
