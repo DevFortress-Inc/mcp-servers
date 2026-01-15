@@ -72,10 +72,10 @@ pnpm start
 
 ## Connect with ChatGPT
 
-**Live MCP Server**: `https://mcp-servers-seven.vercel.app.app/mcp`
+**Live MCP Server**: `https://mcp-servers-seven.vercel.app/mcp`
 
 1. In ChatGPT, go to **Settings → Connectors → Create**
-2. Add the MCP server URL: `https://mcp-servers-seven.vercel.app.app/mcp`
+2. Add the MCP server URL: `https://mcp-servers-seven.vercel.app/mcp`
 
 > **Note:** Requires ChatGPT developer mode access. See the [connection guide](https://developers.openai.com/apps-sdk/deploy/connect-chatgpt).
 
