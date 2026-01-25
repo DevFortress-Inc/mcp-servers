@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pandas
+sqlalchemy
+sse-starlette
+aiosqlite
+aiohttp
+asyncio
