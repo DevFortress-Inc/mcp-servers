@@ -1,0 +1,14 @@
+{
+  "name": "crypto-market-monitor-mcp",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Crypto Market Monitor MCP server for Athena",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.25.76"
+  }
+}
