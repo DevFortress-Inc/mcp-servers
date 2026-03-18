@@ -1,0 +1,256 @@
+<div id="sports-root">
+  <style>
+    #sports-root {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 16px;
+      background: #fff;
+      color: #111;
+    }
+    #sports-root .tab-btn {
+      padding: 7px 18px;
+      margin-right: 8px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f5f5f5;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
+    }
+    #sports-root .tab-btn.active {
+      background: #111bf5;
+      color: #fff;
+      border-color: #111bf5;
+    }
+    #sports-root .tab-btn:hover:not(.active) {
+      background: #e8e8e8;
+    }
+    #sports-root table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 0.84rem;
+    }
+    #sports-root td, #sports-root th {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+    #sports-root th {
+      font-weight: 700;
+      color: #777;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    #sports-root tr:hover td { background: #f9f9f9; }
+    #sports-root .league-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: #111bf5;
+    }
+    #sports-root .season-label {
+      font-size: 12px;
+      color: #999;
+      margin-left: 6px;
+      font-weight: 400;
+    }
+    #sports-root .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #bbb;
+      font-size: 13px;
+    }
+    #sports-root .search-wrap {
+      margin-top: 12px;
+    }
+    #sports-root .search-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #111;
+      outline: none;
+    }
+    #sports-root .search-input:focus {
+      border-color: #111bf5;
+    }
+    #sports-root .form-badge {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 2px;
+    }
+    #sports-root .fw { background: #d4edda; color: #155724; }
+    #sports-root .fd { background: #e2e3e5; color: #383d41; }
+    #sports-root .fl { background: #f8d7da; color: #721c24; }
+    #sports-root .rank-cl { color: #111bf5; font-weight: 700; }
+    #sports-root .rank-rel { color: #c0392b; }
+    #sports-root .score-cell { text-align: center; font-weight: 700; font-size: 13px; }
+    #sports-root .tab-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+  </style>
+
+  <div class="league-title" id="sr-league-name">
+    Sports Dashboard
+    <span class="season-label" id="sr-season"></span>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab-btn active" id="sr-btn-fixtures" onclick="srShowTab('fixtures')">Fixtures</button>
+    <button class="tab-btn" id="sr-btn-standings" onclick="srShowTab('standings')">Standings</button>
+  </div>
+
+  <div id="sr-view-fixtures">
+    <div class="empty-state">No fixtures loaded yet.<br>Ask for a league dashboard to get started.</div>
+  </div>
+
+  <div id="sr-view-standings" style="display:none">
+    <div class="search-wrap">
+      <input class="search-input" type="text" id="sr-search" placeholder="Search team..." oninput="srFilter(this.value)" />
+    </div>
+    <div id="sr-standings-body">
+      <div class="empty-state">No standings loaded yet.<br>Ask for a league dashboard to get started.</div>
+    </div>
+  </div>
+
+  <script>
+    var _tableData = [];
+
+    window.srShowTab = function(tab) {
+      document.getElementById('sr-view-fixtures').style.display = tab === 'fixtures' ? '' : 'none';
+      document.getElementById('sr-view-standings').style.display = tab === 'standings' ? '' : 'none';
+      document.getElementById('sr-btn-fixtures').className = 'tab-btn' + (tab === 'fixtures' ? ' active' : '');
+      document.getElementById('sr-btn-standings').className = 'tab-btn' + (tab === 'standings' ? ' active' : '');
+    };
+
+    function srFormBadges(form) {
+      if (!form) return '—';
+      return form.split('').slice(-5).map(function(c) {
+        var cls = c === 'W' ? 'fw' : c === 'D' ? 'fd' : 'fl';
+        return '<span class="form-badge ' + cls + '">' + c + '</span>';
+      }).join('');
+    }
+
+    function srRenderStandings(rows) {
+      if (!rows || !rows.length) {
+        return '<div class="empty-state">No teams match your search.</div>';
+      }
+      return '<table>' +
+        '<tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th>Form</th></tr>' +
+        rows.map(function(t) {
+          var rank = parseInt(t.intRank) || 99;
+          var rankClass = rank <= 4 ? 'rank-cl' : rank >= 18 ? 'rank-rel' : '';
+          var gd = parseInt(t.intGoalDifference) || 0;
+          var gdStr = gd > 0 ? '+' + gd : '' + gd;
+          return '<tr>' +
+            '<td class="' + rankClass + '">' + (t.intRank || '') + '</td>' +
+            '<td><strong>' + (t.strTeam || '') + '</strong></td>' +
+            '<td>' + (t.intPlayed || 0) + '</td>' +
+            '<td>' + (t.intWin || 0) + '</td>' +
+            '<td>' + (t.intDraw || 0) + '</td>' +
+            '<td>' + (t.intLoss || 0) + '</td>' +
+            '<td>' + gdStr + '</td>' +
+            '<td><strong>' + (t.intPoints || 0) + '</strong></td>' +
+            '<td>' + srFormBadges(t.strForm) + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</table>';
+    }
+
+    window.srFilter = function(query) {
+      var q = (query || '').toLowerCase();
+      var filtered = q
+        ? _tableData.filter(function(t) { return (t.strTeam || '').toLowerCase().indexOf(q) !== -1; })
+        : _tableData;
+      document.getElementById('sr-standings-body').innerHTML = srRenderStandings(filtered);
+    };
+
+    window.srApplyData = function(data) {
+      if (!data) return;
+
+      if (data.leagueName) {
+        document.getElementById('sr-league-name').childNodes[0].nodeValue = data.leagueName + ' ';
+      }
+      if (data.season) {
+        document.getElementById('sr-season').textContent = data.season;
+      }
+
+      var hasEvents = data.events && data.events.length > 0;
+      var hasTable  = data.table  && data.table.length  > 0;
+
+      if (hasEvents) {
+        document.getElementById('sr-view-fixtures').innerHTML =
+          '<table>' +
+          '<tr><th>Date</th><th>Home</th><th>Score</th><th>Away</th><th>Status</th></tr>' +
+          data.events.map(function(e) {
+            var hasScore = e.intHomeScore !== null && e.intHomeScore !== '' && e.intHomeScore !== undefined;
+            var score = hasScore ? (e.intHomeScore + ' – ' + e.intAwayScore) : 'vs';
+            var status = e.strStatus || 'NS';
+            var statusStyle = status === 'FT' ? 'color:#999' : status === 'NS' ? 'color:#555' : 'color:#111bf5;font-weight:700';
+            return '<tr>' +
+              '<td style="color:#777">' + (e.dateEvent || '') + '</td>' +
+              '<td><strong>' + (e.strHomeTeam || '') + '</strong></td>' +
+              '<td class="score-cell">' + score + '</td>' +
+              '<td><strong>' + (e.strAwayTeam || '') + '</strong></td>' +
+              '<td style="font-size:11px;' + statusStyle + '">' + status + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</table>';
+      } else {
+        document.getElementById('sr-view-fixtures').innerHTML =
+          '<div class="empty-state">No upcoming fixtures found for this league.</div>';
+      }
+
+      if (hasTable) {
+        _tableData = data.table;
+        document.getElementById('sr-standings-body').innerHTML = srRenderStandings(_tableData);
+      }
+
+      if (data.type === 'standings') {
+        window.srShowTab('standings');
+      } else if (data.type === 'fixtures') {
+        window.srShowTab('fixtures');
+      } else if (data.type === 'dashboard') {
+        window.srShowTab(hasEvents ? 'fixtures' : 'standings');
+      }
+    };
+
+    var initial = window.openai && window.openai.toolOutput;
+    if (initial) window.srApplyData(initial);
+
+    window.addEventListener('openai:set_globals', function(e) {
+      var globals = e && e.detail && e.detail.globals;
+      var out = globals && globals.toolOutput;
+      if (!out) out = e && e.detail && e.detail.toolOutput;
+      if (out) window.srApplyData(out);
+    }, { passive: true });
+
+    window.addEventListener('openai:toolOutputChange', function(e) {
+      if (e && e.detail) window.srApplyData(e.detail);
+    }, { passive: true });
+
+    var _p = 0;
+    var _t = setInterval(function() {
+      _p++;
+      var out = window.openai && window.openai.toolOutput;
+      if (out && (out.events || out.table)) {
+        window.srApplyData(out);
+        clearInterval(_t);
+      }
+      if (_p > 20) clearInterval(_t);
+    }, 300);
+  </script>
+</div>
