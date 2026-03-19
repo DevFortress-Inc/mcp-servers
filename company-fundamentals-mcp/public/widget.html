@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --primary: #2563eb; --bg: #f8fafc; --card: #ffffff;
+      --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+    .container { max-width: 600px; margin: 0 auto; }
+    /* Search Bar */
+    .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
+    .search-box input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+    .search-box button { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    /* View Toggle */
+    .view-toggle { display: flex; background: #e2e8f0; padding: 4px; border-radius: 8px; width: fit-content; margin-bottom: 20px; display: none;}
+    .toggle-btn { padding: 6px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); background: none; transition: 0.2s;}
+    .toggle-btn.active { background: white; color: var(--primary); shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    /* Card/Grid Styling */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; }
+    .metric-card { background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+    .metric-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; display: block;}
+    .metric-value { font-size: 18px; font-weight: 800; }
+    /* Table Styling */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { text-align: left; font-size: 12px; color: var(--text-muted); text-transform: uppercase; padding: 10px; border-bottom: 2px solid var(--border); }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    tr:last-child td { border-bottom: none; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: none;}
+    #loading { text-align: center; padding: 40px; color: var(--text-muted); display: none; }
+    #error-msg { color: #dc2626; background: #fef2f2; padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <form class="search-box" id="lookup-form">
+      <input type="text" id="ticker-input" placeholder="Enter ticker (e.g. AAPL)" required />
+      <button type="submit">Analyze</button>
+    </form>
+    <div id="error-msg"></div>
+    <div id="loading">Gathering data...</div>
+    <!-- TOGGLE SWITCH -->
+    <div class="view-toggle" id="toggle-container">
+      <button class="toggle-btn active" id="btn-card" onclick="switchView('card')">Dashboard</button>
+      <button class="toggle-btn" id="btn-table" onclick="switchView('table')">Table View</button>
+    </div>
+    <div id="widget-content" class="card">
+      <h2 id="company-title" style="margin-top:0;">Company Name</h2>
+      <div id="display-area"></div> <!-- Content injected here -->
+    </div>
+  </div>
+
+  <script>
+    let metrics = null;
+
+    let currentView = 'card'; // Default view
+  
+    // util functions for values
+    const formatCap = (val) => (val && val !== "None") ? `$${(Number(val) / 1e9).toFixed(2)}B` : "N/A";
+    const formatPct = (val) => (val && val !== "None") ? `${(Number(val) * 100).toFixed(2)}%` : "N/A";
+    const formatCur = (val) => (val && val !== "None") ? `$${Number(val).toFixed(2)}` : "N/A";
+
+    // toggle card view to table
+    function switchView(view) {
+      currentView = view;
+      document.getElementById("btn-card").classList.toggle("active", view === 'card');
+      document.getElementById("btn-table").classList.toggle("active", view === 'table');
+      render();
+    }
+
+    // widget render
+    function render() {
+      if (!metrics) return;
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("toggle-container").style.display = "flex";
+      document.getElementById("widget-content").style.display = "block";
+      document.getElementById("company-title").textContent = `${metrics.Name} (${metrics.Symbol})`;
+      const displayArea = document.getElementById("display-area");
+
+      // Data mapping for both views
+      const rows = [
+        ["Asset Type", metrics.AssetType || "N/A"],
+        ["Industry", metrics.Industry],
+        ["Revenue", formatCap(metrics.RevenueTTM)],
+        ["Profit Margin", formatPct(metrics.ProfitMargin)],
+        ["EBITDA", formatCap(metrics.EBITDA)],
+        ["P/E Ratio", metrics.PERatio],
+      ];
+
+      if (currentView === 'card') { // card view
+        displayArea.innerHTML = `
+          <div class="grid">
+            ${rows.map(([label, val]) => `
+              <div class="metric-card">
+                <span class="metric-label">${label}</span>
+                <span class="metric-value">${val}</span>
+              </div>
+            `).join('')}
+          </div>
+          <p style="font-size: 13px; color: #64748b; margin-top: 20px; line-height: 1.5;">${metrics.Description}</p>
+        `;
+      } else {  // table view
+        displayArea.innerHTML = `
+          <table>
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              ${rows.map(([label, val]) => `
+                <tr><td><strong>${label}</strong></td><td>${val}</td></tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    async function fetchData(symbol) {
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("widget-content").style.display = "none";
+      document.getElementById("error-msg").style.display = "none";
+
+      if (window.openai?.callTool) {
+        try {
+          const res = await window.openai.callTool("get_company_fundamentals", { symbol });
+          metrics = res?.metrics || res?.structuredContent?.metrics;
+          render();
+        } catch (e) { showError(e.message); }
+      } else {
+        const res = await fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=7YLTSWC3FZLJORMF`);
+        metrics = await res.json();
+        metrics.Symbol ? render() : showError("Invalid Ticker.");
+      }
+    }
+
+    function showError(m) {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("error-msg").textContent = m;
+      document.getElementById("error-msg").style.display = "block";
+    }
+
+    // Event listener
+    document.getElementById("lookup-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      fetchData(document.getElementById("ticker-input").value.trim().toUpperCase());
+    });
+
+    // Init check
+    if (window.openai?.toolOutput?.metrics) {
+      metrics = window.openai.toolOutput.metrics;
+      render();
+    }
+  </script>
+</body>
+</html>
