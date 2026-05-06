@@ -1,0 +1,15 @@
+{
+  "name": "crypto-athena-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Athena AI Agent for real-time crypto market data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  }
+}

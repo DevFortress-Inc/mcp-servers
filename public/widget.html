@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Crypto Market Monitor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--green:#3fb950;--red:#f85149;--blue:#58a6ff}
+html,body{width:100%;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+body{padding:14px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.header h1{font-size:1rem;font-weight:700;color:var(--blue)}
+.updated{font-size:0.7rem;color:var(--muted)}
+.pills{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pill{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:0.75rem}
+.pill span{font-weight:700;margin-left:4px}
+.pill span.up{color:var(--green)}.pill span.dn{color:var(--red)}
+.table-wrap{overflow-x:auto;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:0.82rem}
+thead th{color:var(--muted);font-weight:500;padding:6px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th:first-child,thead th:nth-child(2){text-align:left}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:hover,tbody tr.active{background:var(--surface2)}
+tbody td{padding:8px;border-bottom:1px solid var(--border);white-space:nowrap;vertical-align:middle}
+td:first-child{color:var(--muted);width:28px;text-align:center}
+td.name-cell{text-align:left}
+.coin-name{font-weight:600}.coin-sym{font-size:0.7rem;color:var(--muted);text-transform:uppercase}
+td.num{text-align:right}
+.up{color:var(--green)}.dn{color:var(--red)}
+#detail{display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+#detail.show{display:block}
+.detail-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.detail-coin{font-size:1.1rem;font-weight:700}.detail-sub{font-size:0.72rem;color:var(--muted);text-transform:uppercase}
+.detail-price{font-size:1.25rem;font-weight:800;color:var(--blue);text-align:right}.detail-chg{font-size:0.85rem;font-weight:600;text-align:right}
+.tf-btns{display:flex;gap:6px;margin-bottom:10px}
+.tf-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:0.75rem;padding:4px 10px;cursor:pointer;transition:all .15s}
+.tf-btn.active,.tf-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.chart-wrap{position:relative;height:110px;margin-bottom:10px}
+canvas#chart{width:100%;height:100%;display:block}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--bg);border-radius:8px;padding:8px 10px}
+.stat-l{font-size:0.68rem;color:var(--muted);margin-bottom:3px}.stat-v{font-size:0.85rem;font-weight:600}
+.loading{text-align:center;padding:30px;color:var(--muted)}
+.footer{text-align:center;font-size:0.68rem;color:var(--muted);padding-top:6px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📈 Crypto Market Monitor</h1>
+  <span class="updated" id="upd"></span>
+</div>
+<div class="pills" id="pills"></div>
+<div id="detail">
+  <div class="detail-top">
+    <div><div class="detail-coin" id="d-name"></div><div class="detail-sub" id="d-sym"></div></div>
+    <div><div class="detail-price" id="d-price"></div><div class="detail-chg" id="d-chg"></div></div>
+  </div>
+  <div class="tf-btns">
+    <button class="tf-btn" data-days="1">1D</button>
+    <button class="tf-btn active" data-days="7">7D</button>
+    <button class="tf-btn" data-days="30">30D</button>
+  </div>
+  <div class="chart-wrap"><canvas id="chart"></canvas></div>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-l">Market Cap</div><div class="stat-v" id="d-mcap">-</div></div>
+    <div class="stat"><div class="stat-l">24h Volume</div><div class="stat-v" id="d-vol">-</div></div>
+    <div class="stat"><div class="stat-l">7d Change</div><div class="stat-v" id="d-7d">-</div></div>
+  </div>
+</div>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Coin</th><th>Price</th><th>24h %</th><th>7d %</th><th>Market Cap</th><th>7d Chart</th></tr></thead>
+    <tbody id="tbody"><tr><td colspan="7" class="loading">Loading market data…</td></tr></tbody>
+  </table>
+</div>
+<div class="footer">Data via CoinGecko • Click any coin for details</div>
+<script>
+const fmt={
+  price(n){if(n==null)return'N/A';if(n>=1)return'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return'$'+n.toFixed(6)},
+  pct(n){if(n==null)return'N/A';return(n>=0?'+':'')+n.toFixed(2)+'%'},
+  big(n){if(!n)return'N/A';if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';return'$'+n.toLocaleString()}
+};
+function spark(prices,pos){
+  if(!prices||!prices.length)return'-';
+  const W=80,H=28,mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
+  const pts=prices.map((p,i)=>((i/(prices.length-1))*W)+','+(H-((p-mn)/rng)*(H-3)-1)).join(' ');
+  const col=pos?'#3fb950':'#f85149';
+  return'<svg width="80" height="28" viewBox="0 0 80 28"><polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+}
+function drawChart(prices,pos){
+  const canvas=document.getElementById('chart');
+  const W=canvas.parentElement.offsetWidth||300;canvas.width=W;canvas.height=110;
+  const ctx=canvas.getContext('2d');
+  const H=110,pad={t:6,b:6,l:4,r:4};
+  const mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
+  const col=pos?'#3fb950':'#f85149';
+  const pts=prices.map((p,i)=>({x:pad.l+(i/(prices.length-1))*(W-pad.l-pad.r),y:pad.t+((mx-p)/rng)*(H-pad.t-pad.b)}));
+  ctx.clearRect(0,0,W,H);
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,col+'55');g.addColorStop(1,col+'00');
+  ctx.beginPath();ctx.moveTo(pts[0].x,H);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(pts[pts.length-1].x,H);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+}
+let coins=[],activeId=null,activeDays=7;
+function pc(n){return n>=0?'up':'dn'}
+function render(data){
+  coins=data;
+  const ups=data.filter(c=>c.price_change_percentage_24h>=0).length;
+  document.getElementById('pills').innerHTML=
+    '<div class="pill">🟢 Gainers <span class="up">'+ups+'</span></div>'+
+    '<div class="pill">🔴 Losers <span class="dn">'+(data.length-ups)+'</span></div>'+
+    '<div class="pill">Total MCap <span>'+fmt.big(data.reduce((s,c)=>s+(c.market_cap||0),0))+'</span></div>';
+  document.getElementById('upd').textContent='Updated '+new Date().toLocaleTimeString();
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML=data.map((c,i)=>{
+    const c24=c.price_change_percentage_24h,c7=c.price_change_percentage_7d_in_currency;
+    return'<tr data-id="'+c.id+'" class="'+(activeId===c.id?'active':'')+'">'
+      +'<td>'+(i+1)+'</td>'
+      +'<td class="name-cell"><div class="coin-name">'+c.name+'</div><div class="coin-sym">'+c.symbol+'</div></td>'
+      +'<td class="num">'+fmt.price(c.current_price)+'</td>'
+      +'<td class="num '+pc(c24)+'">'+fmt.pct(c24)+'</td>'
+      +'<td class="num '+pc(c7)+'">'+fmt.pct(c7)+'</td>'
+      +'<td class="num">'+fmt.big(c.market_cap)+'</td>'
+      +'<td>'+spark(c.sparkline_in_7d?.price,c7>=0)+'</td>'
+      +'</tr>';
+  }).join('');
+  tbody.querySelectorAll('tr').forEach(tr=>tr.addEventListener('click',()=>selectCoin(tr.dataset.id)));
+}
+function showDetail(c,chartPrices){
+  const c24=c.price_change_percentage_24h,c7=c.price_change_percentage_7d_in_currency;
+  document.getElementById('d-name').textContent=c.name;
+  document.getElementById('d-sym').textContent=c.symbol;
+  document.getElementById('d-price').textContent=fmt.price(c.current_price);
+  const chgEl=document.getElementById('d-chg');chgEl.textContent=fmt.pct(c24)+' (24h)';chgEl.className='detail-chg '+(c24>=0?'up':'dn');
+  document.getElementById('d-mcap').textContent=fmt.big(c.market_cap);
+  document.getElementById('d-vol').textContent=fmt.big(c.total_volume);
+  const s7=document.getElementById('d-7d');s7.textContent=fmt.pct(c7);s7.className='stat-v '+(c7>=0?'up':'dn');
+  document.getElementById('detail').classList.add('show');
+  const prices=chartPrices||(c.sparkline_in_7d?.price||[]);
+  if(prices.length)drawChart(prices,c24>=0);
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.toggle('active',+b.dataset.days===activeDays));
+}
+async function loadChart(coinId, days) {
+  activeDays = days;
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.toggle('active', +b.dataset.days === days));
+  try {
+    let prices = [];
+    if (window.openai?.callTool) {
+      const resp = await window.openai.callTool('get_coin_chart', { coin_id: coinId, days: days });
+      prices = (resp?.structuredContent?.prices || []).map(p => p[1]);
+    }
+    if (!prices.length) {
+      const url = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      prices = (data.prices || []).map(p => p[1]);
+    }
+    const c = coins.find(x => x.id === coinId);
+    if (c && prices.length) drawChart(prices, c.price_change_percentage_24h >= 0);
+  } catch(e) { console.warn('chart error', e); }
+}
+function selectCoin(id){
+  activeId=id;activeDays=7;
+  document.querySelectorAll('tbody tr').forEach(r=>r.classList.toggle('active',r.dataset.id===id));
+  const c=coins.find(x=>x.id===id);
+  if(c){showDetail(c,null);loadChart(id,7);}
+}
+document.querySelectorAll('.tf-btn').forEach(btn=>btn.addEventListener('click',()=>{if(activeId)loadChart(activeId,+btn.dataset.days);}));
+window.addEventListener('openai:set_globals',e=>{const d=e.detail?.globals?.toolOutput;if(d?.coins)render(d.coins);});
+const init=window.openai?.toolOutput;
+if(init?.coins)render(init.coins);
+</script>
+</body>
+</html>
